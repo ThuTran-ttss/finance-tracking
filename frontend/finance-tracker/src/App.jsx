@@ -5,6 +5,8 @@ import TransactionTable from "./TransactionTable";
 import "./App.css";
 
 function App() {
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:2302"; 
+
   const [transactions, setTransactions] = useState([]);
 
   const [data, setData] = useState({
@@ -34,17 +36,15 @@ function App() {
 
   useEffect(() => {
     axios
-      .get("http://localhost:2302/transactions")
-      .then((res) => {
-        setTransactions(res.data);
-      })
+      .get(`${API_URL}/transactions`)
+      .then((res) => setTransactions(res.data))
       .catch((err) => console.log("Unable to get data", err));
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    await axios.post("http://localhost:2302/transactions", {
+    await axios.post(`${API_URL}/transactions`, {
       ...data,
       amount:
         data.transactionType === "expenses"
@@ -52,8 +52,7 @@ function App() {
           : Number(data.amount),
     });
 
-    const response = await axios.get("http://localhost:2302/transactions");
-
+    const response = await axios.get(`${API_URL}/transactions`);
     setTransactions(response.data);
 
     setData({
@@ -69,7 +68,7 @@ function App() {
   const handleDelete = async (_id) => {
     if (window.confirm("Are you sure you want to delete this transaction?")) {
       try {
-        await axios.delete(`http://localhost:2302/transactions/${_id}`);
+        await axios.delete(`${API_URL}/transactions/${_id}`);;
         setTransactions(transactions.filter((trans) => trans._id !== _id));
       } catch (err) {
         console.log("Unable to delete transaction", err);
