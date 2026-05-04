@@ -11,10 +11,20 @@ const app = express(); //tạo server
 app.use(cors()); // cho React gọi backend
 app.use(express.json()); //cho phép server đọc dữ liệu json từ req body
 
-mongoose // connect MongoDB
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB connected"))
-  .catch((error) => console.log(error));
+const PORT = process.env.PORT || 2302;
+
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log("MongoDB connected");
+
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+
+  })
+  .catch((error) => {
+    console.log("MongoDB error:", error);
+  });
 
 app.get("/transactions",  async(req,res) => {
     const transactions = await Transaction.find();
@@ -45,6 +55,3 @@ app.delete('/transactions/:id', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-const PORT = process.env.PORT || 2302;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
