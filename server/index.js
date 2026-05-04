@@ -13,19 +13,6 @@ app.use(express.json()); //cho phép server đọc dữ liệu json từ req bod
 
 const PORT = process.env.PORT || 2302;
 
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log("MongoDB connected");
-
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running on port ${PORT}`);
-    });
-
-  })
-  .catch((error) => {
-    console.log("MongoDB error:", error);
-  });
-
 app.get("/transactions",  async(req,res) => {
     const transactions = await Transaction.find();
     res.json(transactions);
@@ -55,3 +42,19 @@ app.delete('/transactions/:id', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+const startServer = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("MongoDB connected");
+
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+
+  } catch (err) {
+    console.log("MongoDB error:", err);
+  }
+};
+
+startServer();
