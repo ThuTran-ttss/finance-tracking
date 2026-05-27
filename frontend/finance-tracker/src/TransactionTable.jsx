@@ -98,7 +98,7 @@ function TransactionTable({
           <tbody>
             {transactions.length === 0 ? (
               <tr>
-                <td colSpan="7" style={{ textAlign: "center", padding: "20px" }}>Không có dữ liệu giao dịch.</td>
+                <td colSpan="7" style={{ textAlign: "center", padding: "20px" }}>No Transactions.</td>
               </tr>
             ) : (
               transactions.map((trans) => (
