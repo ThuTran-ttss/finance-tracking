@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react";
+
 function TransactionTable({
   transactions,
   filter,
@@ -8,6 +10,7 @@ function TransactionTable({
   totalBalance,
   handleDelete,
 }) {
+  const [searchTerm, setSearchTerm] = useState(filter.category);
   
   // ______________Hàm format ngày từ ISO Object thành định dạng DD/MM/YYYY______________
   const formatDate = (dateString) => {
@@ -15,6 +18,14 @@ function TransactionTable({
     const date = new Date(dateString);
     return date.toLocaleDateString("vi-VN");
   };
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      setFilter((prev) => ({ ...prev, category: searchTerm, page: 1 }));
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn); // _______Xóa bộ đếm nếu user tiếp tục gõ tiếp______
+  }, [searchTerm]);
 
   return (
     <>
@@ -51,8 +62,8 @@ function TransactionTable({
                   <input 
                     type="text" 
                     placeholder="Search category..." 
-                    value={filter.category}
-                    onChange={(e) => setFilter({ ...filter, category: e.target.value, page: 1 })}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                     style={{ padding: "4px", borderRadius: "4px", border: "1px solid #ccc", marginTop: "4px" }}
                   />
                 </div>

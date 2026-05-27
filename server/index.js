@@ -16,35 +16,72 @@ const PORT = process.env.PORT || 2302;
 // Xử lý được dữ liệu lớn hơn so với Client-side Filtering
 app.get("/transactions", async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    let page = parseInt(req.query.page) || 1;
+    let limit = parseInt(req.query.limit) || 10;
+    if (page < 1) page = 1;
+    if (limit < 1 || limit > 100) limit = 10; 
+
     const { category, transactionType, date } = req.query;
 
     // Tạo object bộ lọc động
     let queryFilter = {};
-    if (category) queryFilter.category = category;
-    if (transactionType && transactionType !== "all") queryFilter.transactionType = transactionType;
-    if (date) queryFilter.date = new Date(date);
+    if (category) {
+        queryFilter.category = { $regex: category, $options: "i" };//tìm tương đối (Regex) không phân biệt hoa thường
+      }
+    
+    if (transactionType && transactionType !== "all") {
+        queryFilter.transactionType = transactionType;
+      }
+
+    if (date) { // Validate ép kiểu Date 
+      const parsedDate = new Date(date);
+      if (!isNaN(parsedDate.getTime())) {
+        queryFilter.date = parsedDate;
+      }
+    }
 
     // _________________Tính số bản ghi cần bỏ qua (skip)_________________
     const skip = (page - 1) * limit;
 
     // _________________Lấy dữ liệu đã paginate và tổng số transactions để Frontend làm UI bấm chuyển trang_________________
-    const transactions = await Transaction.find(queryFilter)
-                                          .sort({ date: -1 }) // _________________Sắp xếp ngày mới nhất lên đầu
-                                          .skip(skip)
-                                          .limit(limit);
-                                          
-    const totalRecords = await Transaction.countDocuments(queryFilter);
+    //  Gom 3 tác vụ chạy song song tối ưu hiệu năng bằng Promise.all
+    const [transactions, totalRecords, summaryData] = await Promise.all([
+      // Tác vụ 1: Lấy dữ liệu phân trang
+      Transaction.find(queryFilter).sort({ date: -1 }).skip(skip).limit(limit),
+      
+      // Tác vụ 2: Đếm tổng số lượng bản ghi phục vụ UI phân trang
+      Transaction.countDocuments(queryFilter),
+      
+      // Tác vụ 3: Tính toán tổng tiền thực tế trên DB 
+      Transaction.aggregate([
+        { $match: queryFilter },
+        {
+          $group: {
+            _id: null,
+            totalIncome: {
+              $sum: { $cond: [{ $eq: ["$transactionType", "income"] }, "$amount", 0] }
+            },
+            totalExpenses: {
+              $sum: { $cond: [{ $eq: ["$transactionType", "expenses"] }, { $abs: "$amount" }, 0] }
+            },
+            totalBalance: { $sum: "$amount" }
+          }
+        }
+      ])
+    ]);
+
+    // Bóc tách kết quả tính tổng (Nếu DB trống thì gán mặc định bằng 0)
+    const summary = summaryData[0] || { totalIncome: 0, totalExpenses: 0, totalBalance: 0 };
 
     res.json({
       currentPage: page,
       totalPages: Math.ceil(totalRecords / limit),
       totalRecords,
+      summary,
       data: transactions
     });
   } catch (err) {
-    res.status(500).json({ error: "Lỗi Server khi lấy dữ liệu: " + err.message });
+    res.status(500).json({ error: "Server Errors: " + err.message });
   }
 });
 
@@ -55,7 +92,7 @@ app.post("/transactions", async (req, res) => {
 
     // _________________Validation _________________
     if (!title || !amount || !category || !paymentType || !transactionType || !date) {
-      return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin bắt buộc!" });
+      return res.status(400).json({ message: "Please input all required fields!" });
     }
 
     const newTrans = await Transaction.create({
@@ -69,7 +106,7 @@ app.post("/transactions", async (req, res) => {
 
     res.status(201).json(newTrans);
   } catch (err) {
-    res.status(500).json({ error: "Lỗi Server khi tạo giao dịch: " + err.message });
+    res.status(500).json({ error: "Server Errors: " + err.message });
   }
 });
 
@@ -80,11 +117,11 @@ app.delete('/transactions/:id', async (req, res) => {
     const deletedTransaction = await Transaction.findByIdAndDelete(id);
     
     if (!deletedTransaction) {
-      return res.status(404).json({ message: "Không tìm thấy giao dịch để xóa!" });
+      return res.status(404).json({ message: "Cannot find transactions!" });
     }
-    res.status(200).json({ message: "Xóa thành công!" });
+    res.status(200).json({ message: "Deleted!" });
   } catch (err) {
-    res.status(500).json({ error: "Lỗi Server khi xóa: " + err.message });
+    res.status(500).json({ error: "Server Errors: " + err.message });
   }
 });
 
