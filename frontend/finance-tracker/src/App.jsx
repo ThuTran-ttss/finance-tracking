@@ -98,18 +98,6 @@ function App() {
     }
   };
 
-
-  // _____________Tính toán tổng số tiền dựa trên dữ liệu hiện có_____________
-  const totalIncome = transactions
-    .filter((t) => t.transactionType === "income")
-    .reduce((sum, t) => sum + t.amount, 0); 
-
-  const totalExpenses = transactions
-    .filter((t) => t.transactionType === "expenses")
-    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-
-  const totalBalance = transactions.reduce((sum, t) => sum + t.amount, 0);
-
   return (
     <>
       <h1>Personal Finance Tracker</h1>
